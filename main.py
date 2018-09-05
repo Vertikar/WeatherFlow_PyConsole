@@ -237,7 +237,7 @@ class WeatherFlowPyConsole(App):
 		Template = ("https://avwx.rest/api/metar/{},{}?options=info")
 		URL = Template.format(self.System['Lat'],self.System['Lon'])
 		Data = requests.get(URL).json()
-		self.System['METARKey'] = Data['Info']['ICAO']
+		self.System['METARKey'] = Data['Info']['Icao']
 					
 		# Initialise Sunrise/sunset and Moonrise/moonset times
 		self.Calc_SunriseSunset()
