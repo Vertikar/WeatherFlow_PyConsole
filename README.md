@@ -108,7 +108,7 @@ Step 8: Download WeatherFlow PyConsole source code
 
 ```
 cd && mkdir WeatherFlow && cd WeatherFlow
-wget https://github.com/peted-davis/WeatherFlow_PyConsole/archive/v0.1-beta.tar.gz -O PyConsole.tar.gz
+wget https://github.com/peted-davis/WeatherFlow_PyConsole/archive/v0.2-beta.tar.gz -O PyConsole.tar.gz
 tar -xvf PyConsole.tar.gz --strip 1
 rm PyConsole.tar.gz
 ```
