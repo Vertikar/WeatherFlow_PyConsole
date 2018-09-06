@@ -1,8 +1,16 @@
 # WeatherFlow_PyConsole
 Rasberry Pi Python console for WeatherFlow Smart Weather Station
 
-Follow these instructions to get WeatherFlow PyConsole setup and running on your 
-Raspberry Pi Official 7 inch touch screen. The installation should take ~1 hour.
+## Update Instructions
+
+Follow these instructions to update an existing installation of the WeatherFlow PyConsole.
+
+(coming soon)
+
+## Installation Instructions
+
+Follow these instructions to setup a new installation of the WeatherFlow PyConsole on your
+Raspberry Pi Official 7 inch touch screen. This initial installation should take ~1 hour.
 
 The instructions assume you have already sucesfully setup your Raspberry Pi, 
 have attached the touch screen, and have either a keyboard and mouse attached 
@@ -14,33 +22,25 @@ starting from scratch, some of these links may help get you started:
 * https://www.raspberrypi.org/documentation/remote-access/ssh/
 * https://www.raspberrypi.org/documentation/remote-access/vnc/
 
----
-Step 1: Make sure your Raspberry Pi is fully up to date
----
+### Step 1: Make sure your Raspberry Pi is fully up to date
 
 ```
 sudo apt-get update && sudo apt-get dist-upgrade
 ```
 
----
-Step 2: Upgrade the Python 3 version of Pip
----
+### Step 2: Upgrade the Python 3 version of Pip
 
 ```
 python3 -m pip install --upgrade pip
 ```	
 
----
-Step 3: Confirm current user is in "input" and "video" groups
----
+### Step 3: Confirm current user is in "input" and "video" groups
 
 ```
 sudo usermod -a -G input,video $(whoami)
 ```
 
----
-Step 4: Install required dependencies
----
+### Step 4: Install required dependencies
 
 `sudo apt-get install libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev pkg-config libgl1-mesa-dev libgles2-mesa-dev python-setuptools libgstreamer1.0-dev git-core gstreamer1.0-plugins-{bad,base,good,ugly} gstreamer1.0-{omx,alsa} python-dev libmtdev-dev xclip xsel libatlas-base-dev`
 
@@ -49,25 +49,20 @@ y (confirms you want to install dependencies)
 [press enter]
 ```
 
----
-Step 5: Install required Python modules
----
+### Step 5: Install required Python modules
 
 ```
 sudo python3 -m pip install autobahn[twisted] pytz pyasn1-modules service_identity geopy ephem Cython
 ```
 
----
-Step 6: Install Kivy Python library - this make take some time
---- 
+### Step 6: Install Kivy Python library - this make take some time
 
 ```
 sudo python3 -m pip install git+https://github.com/kivy/kivy.git@master`
 ```
 
----
-Step 7: Configure Kivy for Raspberry Pi touchscreen
----
+### Step 7: Configure Kivy for Raspberry Pi touchscreen
+
 Run Kivy for the first time to generate configuration files:
 
 ```
@@ -102,9 +97,7 @@ Reboot the system:
 sudo reboot now
 ```
 
----
-Step 8: Download WeatherFlow PyConsole source code
----
+### Step 8: Download WeatherFlow PyConsole source code
 
 ```
 cd && mkdir WeatherFlow && cd WeatherFlow
@@ -113,9 +106,8 @@ tar -xvf PyConsole.tar.gz --strip 1
 rm PyConsole.tar.gz
 ```
 
----
-Step 9: Configure WeatherFlow PyConsole
----
+### Step 9: Configure WeatherFlow PyConsole
+
 To get the WeatherFlow PyConsole up and running, you need to specify your 
 station number in the configuration file, as well as one API key needed to
 determine the the station location (country) from its latitude/longitude, and 
@@ -160,9 +152,8 @@ y (confirms you want to save changes)
 [press enter]
 ```
 	
----
-Step 10: Run WeatherFlow PyConsole
----
+### Step 10: Run WeatherFlow PyConsole
+
 Time to run the WeatherFlow PyConsole:
 
 ```
