@@ -73,8 +73,9 @@ from kivy.factory import Factory
 from kivy.uix.screenmanager import ScreenManager,Screen
 from kivy.core.window import Window
 from kivy.uix.popup import Popup
-from kivy.properties import StringProperty,DictProperty
+from kivy.properties import StringProperty,DictProperty,NumericProperty
 from kivy.clock import Clock
+from kivy.animation import Animation
 from twisted.internet import reactor,ssl
 from datetime import datetime,date,time,timedelta
 from geopy import distance as geopy
@@ -109,7 +110,7 @@ def CircularMean(angles):
 class WeatherFlowPyConsole(App):
 	
 	# Define Kivy properties required for display in "WeatherFlowPyConsole.kv" 
-	System = DictProperty([('ForecastLocn','--')])
+	System = DictProperty([('ForecastLocn','--'),('Units',{})])
 	MetDict = DictProperty()
 	MetData = DictProperty([('Temp','--'),('Precip','--'),('WindSpd','--'),
 							('WindDir','--'),('Weather','Building'),
@@ -144,14 +145,17 @@ class WeatherFlowPyConsole(App):
 	MoonData = DictProperty([('Moonrise','--'),('Moonset','--'),
 							('MoonriseTxt','--'),('MoonsetTxt','--'),('NewMoon','--'),
 							('FullMoon','--'),('Illuminated','--'),('Phase','--'),
-							('Icon','Building')])							
+							('Icon','Building')])	
+
+	Angle = NumericProperty(0)							
     
 	# INITIALISE "WeatherFlowPyConsole" CLASS
 	# -----------------------------------------------------------
 	def __init__(self,**kwargs):
 	
-		# Initiate class
+		# Initiate class and force window size if required
 		super(WeatherFlowPyConsole,self).__init__(**kwargs)
+		Window.size = (800,480)
 	
 		# Parse variables from WeatherPi configuration file
 		config = configparser.ConfigParser()
@@ -162,12 +166,13 @@ class WeatherFlowPyConsole(App):
 		self.System['GeoNamesKey'] = config['User']['GeoNamesKey']
 		self.System['MetOfficeKey'] = config['User']['MetOfficeKey']
 		self.System['DarkSkyKey'] = config['User']['DarkSkyKey']
+		self.System['CheckWXKey'] = config['User']['CheckWXKey']
 		self.System['StationID'] = config['User']['StationID']
 		self.System['AirName'] = config['User']['AirName']
 		self.System['SkyName'] = config['User']['SkyName']
 
-		# Set Sky and Air IDs and extract height above ground
-		Template = "https://swd.weatherflow.com/swd/rest/stations/{}?api_key={}"
+		# Determine Sky and Air IDs and extract height above ground
+		Template = 'https://swd.weatherflow.com/swd/rest/stations/{}?api_key={}'
 		URL = Template.format(self.System['StationID'],self.System['WFlowKey'])
 		Data = requests.get(URL).json()
 		Devices = Data['stations'][0]['devices']
@@ -184,15 +189,26 @@ class WeatherFlowPyConsole(App):
 					self.System['SkyID'] = str(Dev['device_id'])
 					self.System['SkyHeight'] = Dev['device_meta']['agl']
 					
-		# Set Station lat/lon, elevation, and timezone
+		# Determine Station latitude/longitude, elevation, and timezone
 		self.System['Lat'] = Data['stations'][0]['latitude']
 		self.System['Lon'] = Data['stations'][0]['longitude']
 		self.System['tz'] = pytz.timezone(Data['stations'][0]['timezone'])
 		self.System['StnElev'] = Data['stations'][0]['station_meta']['elevation']
 		
+		# Determine Station units
+		Template = 'https://swd.weatherflow.com/swd/rest/observations/station/{}?api_key={}'
+		URL = Template.format(self.System['StationID'],self.System['WFlowKey'])
+		Data = requests.get(URL).json()
+		self.System['Units']['Temp'] = Data['station_units']['units_temp']
+		self.System['Units']['Wind'] = Data['station_units']['units_wind']
+		self.System['Units']['Precip'] = Data['station_units']['units_precip']
+		self.System['Units']['Pressure'] = Data['station_units']['units_pressure']
+		self.System['Units']['Distance'] = Data['station_units']['units_distance']
+		self.System['Units']['Direction'] = Data['station_units']['units_direction']
+		self.System['Units']['Other'] = Data['station_units']['units_other']
+		
 		# Determine country of Station
-		Template = ("http://api.geonames.org/countryCode?lat={}&lng={}" 
-					"&username={}&type=json")	
+		Template = 'http://api.geonames.org/countryCode?lat={}&lng={}&username={}&type=json'
 		URL = Template.format(self.System['Lat'],self.System['Lon'],self.System['GeoNamesKey'])
 		Data = requests.get(URL).json()
 		self.System['Country'] = Data['countryCode']
@@ -200,8 +216,7 @@ class WeatherFlowPyConsole(App):
 		# If Station is located in Great Britain: determine closest MetOffice 
 		# forecast location
 		if self.System['Country'] == 'GB':
-			Template = ("http://datapoint.metoffice.gov.uk/public/data/"
-						"val/wxfcs/all/json/sitelist?&key={}")
+			Template = 'http://datapoint.metoffice.gov.uk/public/data/val/wxfcs/all/json/sitelist?&key={}'
 			URL = Template.format(self.System['MetOfficeKey'])
 			Data = requests.get(URL).json()
 			MinDist = math.inf
@@ -231,14 +246,7 @@ class WeatherFlowPyConsole(App):
 				self.System['ForecastLocn'] = Locns[Len.index(Ind)]
 			else:
 				self.System['ForecastLocn'] = ""
-				
-		# Determine closest METAR location to Station latitude/longitude for use 
-		# in Sager Weathercaster Forecast
-		Template = ("https://avwx.rest/api/metar/{},{}?options=info")
-		URL = Template.format(self.System['Lat'],self.System['Lon'])
-		Data = requests.get(URL).json()
-		self.System['METARKey'] = Data['Info']['Icao']
-					
+
 		# Initialise Sunrise/sunset and Moonrise/moonset times
 		self.Calc_SunriseSunset()
 		self.Calc_MoonriseMoonset()
@@ -249,12 +257,12 @@ class WeatherFlowPyConsole(App):
 		Clock.schedule_once(self.Calc_SagerForecast)
 		Clock.schedule_interval(self.Update_Methods,1.0)
 		Clock.schedule_interval(self.Check_SkyAirStatus,10.0)
-	
+		
 	# POINT "WeatherFlowPyConsole" APP CLASS TO ASSOCIATED .kv FILE
 	# --------------------------------------------------------------------------
 	def build(self):
 		return Builder.load_file('WeatherFlowPyConsole.kv')
-		
+	
 	# CONNECT TO THE WEATHER FLOW WEBSOCKET SERVER
 	# --------------------------------------------------------------------------
 	def Websocket_Connect(self):
@@ -305,7 +313,7 @@ class WeatherFlowPyConsole(App):
 			Battery = Obs[8]
 			Radiation = Obs[10]
 			
-			# Set required observation units
+			# Convert observation units as required
 			RainRate = RainRate * 60				  # Rain rate in mm/hour
 			WindAvg = WindAvg * 2.23694         	  # Wind speed in miles/hour
 			WindGust = WindGust * 2.23694       	  # Wind speed in miles/hour
@@ -317,19 +325,18 @@ class WeatherFlowPyConsole(App):
 			self.Sky['WindAvg'] = "{:2.1f}".format(WindAvg)
 			self.Sky['WindGust'] = "{:2.1f}".format(WindGust)
 			self.Sky['Battery'] = "{:1.2f}".format(Battery)
-			self.Sky['Obs'] = Msg['obs'][0]
-			if WindAvg == 0:
-				self.Sky['WindDirec'] = '--'
-			else:
-				self.Sky['WindDirec'] = str(WindDirec)
+			self.Sky['DirecIcon'] = self.WindBearingToCompassDirec(WindDirec,WindAvg)[0]
+			self.Sky['WindDirec'] = str(WindDirec)
 			if RainRate == 0:
 				self.Sky['RainRate'] = "{:1.0f}".format(RainRate)	
 			elif RainRate < 1:
 				self.Sky['RainRate'] = "{:1.2f}".format(RainRate)
 			else:
 				self.Sky['RainRate'] = "{:2.1f}".format(RainRate)
-			self.Sky['DirecIcon'] = self.WindBearingToCompassDirec(WindDirec)[0]
-				
+			
+			# Store latest Observation JSON message
+			self.Sky['Obs'] = Msg['obs'][0]
+			
 			# Calculate "Feels Like" temperature, rain 
 			# accumulation, and  max/min wind speed and gust  
 			self.Calc_FeelsLikeTemp()
@@ -349,28 +356,43 @@ class WeatherFlowPyConsole(App):
 		# Extract Rapid-Wind observations from Sky Module	
 		elif Type == 'rapid_wind':
 		
-			# Extract observations from Rapid Wind websocket message, and 
-			# replace missing observations with NaN
+			# Replace missing observations with NaN and extract observations
+			# from Rapid Wind websocket message
 			Obs = [x if x != None else NaN for x in Msg['ob']]
 			Time = Obs[0]
 			Speed = Obs[1] 
 			Direc = Obs[2]
 			
-			# Set required observation units
+			# Convert observation units as required
 			Speed = Speed * 2.23694         		  # Wind speed in miles/hour
 			
 			# Define and format Kivy label binds
 			self.SkyRapid['Time'] = datetime.fromtimestamp(Time,self.System['tz']).strftime('%H:%M:%S')
 			self.SkyRapid['Speed'] = "{:2.1f}".format(Speed)
-			self.SkyRapid['Obs'] = Msg['ob']
-			if Speed == 0:
-				self.SkyRapid['Direc'] = '--'
-				self.SkyRapid['Icon'] = '--'
-				self.SkyRapid['DirecText'] = '--'	
+			self.SkyRapid['Direc'] = str(Direc)
+			self.SkyRapid['DirecText'] = self.WindBearingToCompassDirec(Direc,Speed)[1]
+				
+			# Animate wind rose arrow
+			if self.SkyRapid['Obs'] == '--':
+				Direc1 = 0
+				Direc2 = Direc
 			else:
-				self.SkyRapid['Direc'] = str(Direc)
-				self.SkyRapid['Icon'] = str(Direc)	
-				self.SkyRapid['DirecText'] = self.WindBearingToCompassDirec(Direc)[1]	
+				Direc1 = self.SkyRapid['Obs'][2]
+				Direc2 = Direc
+			WindShift = Direc2 - Direc1			
+			if WindShift >= -180 and WindShift <= 180:
+				Animation(Angle=Direc, duration=2*abs(WindShift)/360).start(self)
+			elif WindShift > 180:
+				Animation(Angle=0, duration=2*Direc1/360).start(self)	
+				self.Angle = 360
+				Animation(Angle=Direc, duration=2*(360-Direc2)/360).start(self)
+			elif WindShift < -180:
+				Animation(Angle=360, duration=2*(360-Direc1)/360).start(self)	
+				self.Angle = 0
+				Animation(Angle=Direc, duration=2*Direc2/360).start(self)			
+			
+			# Store latest Observation JSON message
+			self.SkyRapid['Obs'] = Msg['ob']
 			
 		# Extract 1-minute observations from Air Module
 		elif Type == 'obs_air':
@@ -384,16 +406,17 @@ class WeatherFlowPyConsole(App):
 			Humidity = Obs[3]
 			Battery = Obs[6]
 			
-			# Calculate sea level pressure
-			Pres = self.Calc_SeaLevelPressure(Pres)
+			# Convert observation units as required
 			
 			# Define and format Kivy label binds
 			self.Air['Time'] = datetime.fromtimestamp(Time,self.System['tz']).strftime('%H:%M:%S')
 			self.Air['Temp'] = "{:2.1f}".format(Temp)
 			self.Air['Humidity'] = "{:2.0f}".format(Humidity)
-			self.Air['Pres'] = "{:4.1f}".format(Pres)
+			self.Air['Pres'] = "{:4.1f}".format(self.Calc_SeaLevelPressure(Pres))
 			self.Air['PresTrnd'] = Msg['summary']['pressure_trend']
 			self.Air['Battery'] = "{:1.2f}".format(Battery)
+			
+			# Store latest Observation JSON message
 			self.Air['Obs'] = Msg['obs'][0]
 			
 			# Calculate Humidity, "Feels Like" temperature,
@@ -520,10 +543,6 @@ class WeatherFlowPyConsole(App):
 			self.Air['PresTrndTxt'] = "[color=00a4b4ff]Falling[/color]"
 		else:
 			self.Air['PresTrndTxt'] = "[color=9aba2fff]Steady[/color]"
-		
-		Time1 = datetime.fromtimestamp(Data[0][0],self.System['tz'])
-		Time2 = datetime.fromtimestamp(Data[-1][0],self.System['tz'])
-		Diff = (Time2 - Time1).total_seconds()
 
 	# CALCULATE DAILY RAIN ACCUMULATION LEVELS
     # -----------------------------------------------------------
@@ -828,13 +847,13 @@ class WeatherFlowPyConsole(App):
 					
 	# DEFINE COMPASS DIRECTION TEXT BASED ON SPECIFIED WIND DIRECTION BEARING
 	# --------------------------------------------------------------------------
-	def WindBearingToCompassDirec(self,Dir):
+	def WindBearingToCompassDirec(self,Dir,Spd):
 			
 		# Define compass direction text with and without markup based on input
 		# wind direction bearing
-		if Dir == "--":
-			CompassText_wMarkup = "--"
-			CompassText = "--"
+		if Spd == 0:
+			CompassText_wMarkup = "[color=9aba2fff]Calm[/color]"
+			CompassText = "N"
 		elif float(Dir) <= 11.25:
 			CompassText_wMarkup = "Due [color=9aba2fff]North[/color]"
 			CompassText = "N"
@@ -1344,7 +1363,7 @@ class WeatherFlowPyConsole(App):
 		self.MetData['Issued'] = datetime.strftime(Issued,'%H:%M')
 		self.MetData['Valid'] = datetime.strftime(Valid,'%H:%M')
 		self.MetData['Temp'] = "{:.1f}".format(Temp)
-		self.MetData['WindDir'] = self.WindBearingToCompassDirec(WindDir)[0]
+		self.MetData['WindDir'] = self.WindBearingToCompassDirec(WindDir,1)[0]
 		self.MetData['WindSpd'] = "{:.0f}".format(WindSpd)
 		self.MetData['Precip'] = "{:.0f}".format(Precip)
 		
@@ -1419,7 +1438,6 @@ class WeatherFlowPyConsole(App):
 		# Define required station variables for the Sager 
 		# Weathercaster Forecast
 		self.Sager['Lat'] = self.System['Lat']
-		self.Sager['METARKey'] = self.System['METARKey']
 		
 		# Define required wind direction variables for the Sager 
 		# Weathercaster Forecast
@@ -1452,6 +1470,13 @@ class WeatherFlowPyConsole(App):
 		# Define required temperature variables for the Sager 
 		# Weathercaster Forecast
 		self.Sager['Temp'] = np.nanmean(Air['Temp'][-15:])
+		
+		# Download closet METAR information to station location
+		header = {'X-API-Key':self.System['CheckWXKey']}
+		Template = "https://api.checkwx.com/metar/lat/{}/lon/{}/decoded"
+		URL = Template.format(self.System['Lat'],self.System['Lon'])
+		Data = requests.get(URL,headers=header).json()
+		self.Sager['METAR'] = Data['data'][0]
 		
 		# Calculate Sager Weathercaster Forecast
 		self.Sager['Dial'] = Sager.DialSetting(self.Sager)

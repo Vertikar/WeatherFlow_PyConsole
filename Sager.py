@@ -24,17 +24,14 @@ def DialSetting(Met):
 		Pres6				Atmospheric pressure 6 hours ago in hPa
 		LastRain			Minutes since last rain
 		Temp				Current temperature
+		METAR				Closet METAR information to station location
 		
 	OUTPUT: Sager - Dictionary containing the position of the Sager 
 					Weathercaster Dial
 	"""
 	
-	# Import required modules
-	import requests
-	
 	# Extract input location/meteorological variables
 	Lat = Met['Lat']							# Weather station latitude
-	Key = Met['METARKey']						# Metar Key
 	wd6 = Met['WindDir6']						# Average wind direction 6 hours ago in degrees
 	wd = Met['WindDir']							# Current average wind direction in degrees
 	ws6 = Met['WindSpd6']						# Average wind speed 6 hours ago in mph
@@ -43,35 +40,18 @@ def DialSetting(Met):
 	p6 = Met['Pres6']							# Atmospheric pressure 6 hours ago in hPa
 	lr = Met['LastRain']						# Minutes since last rain
 	t = Met['Temp']								# Current temperature
+	METAR = Met['METAR']						# Closet METAR information to station location
 	
-	# Download Metar
-	Template = ("http://tgftp.nws.noaa.gov/data/observations/metar/stations/{}.TXT")
-	URL = Template.format(Key)
-	Metar = requests.get(URL).text
-
-	# Removes unnecessary slashes from Metar
-	Slash = list(['////','///','//'])
-	for k in Slash:
-		Metar = Metar.replace(k,'')
-
-	# Remove airport code and header date from Metar
-	Metar = Metar[Metar.index(Key)+5:]
-
-	# Searches Metar for Cloud Codes
-	Ind = {}
-	ccodes = list(['VV','OVC','BKN','SCT','FEW','CLR','SKC','CAVOK','NCD','NSC'])
-	for count,ccode in enumerate(ccodes):
-		if Metar.find(ccode) != -1:
-			Ind[count] = Metar.find(ccode)	
-	ccode = ccodes[min(Ind,key=Ind.get)]		
+	# Extacts Cloud Code from METAR information
+	ccode = METAR['clouds'][0]['code']
 			
-	# Searches Metar for Precipitation Codes
+	# Searches METAR information for Precipitation Codes
 	Ind = {}
 	pcodes = list(['FZDZ','FZRA','SHGR','SHGS','SHPL','SHRA','SHSN','TSGR','TSGS','TSPL','TSRA',
 				   'TSSN','VCSH','VCTS','DZ','GR','GS','IC','PL','RA','SG','SN','UP'])
 	for count,pcode in enumerate(pcodes):
-		if Metar.find(pcode) != -1:
-			Ind[count] = Metar.find(pcode)
+		if METAR['raw_text'].find(pcode) != -1:
+			Ind[count] = METAR['raw_text'].find(pcode)
 	pcode = {}
 	if len(Ind) != 0:		
 		pcode = pcodes[min(Ind,key=Ind.get)]
