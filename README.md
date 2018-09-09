@@ -3,9 +3,23 @@ Rasberry Pi Python console for WeatherFlow Smart Weather Station
 
 ## Update Instructions
 
-Follow these instructions to update an existing installation of the WeatherFlow PyConsole.
+Follow these instructions to update an existing installation of the WeatherFlow 
+PyConsole. These instructions assume you have installed the PyConsole in the 
+default directory (~/WeatherFlow/). If you have installed the PyConsole in a 
+different location, I assume you know what you are doing!
 
-(coming soon)
+**!!WARNING!!** - Updating the code will overwrite the WeatherFlow_PyConsole.ini 
+configuration file. This is expected behaviour as I am likely to update it from 
+time to time. Before running the update, I suggest you make a backup of your 
+existing WeatherFlow_PyConsole.ini file so you can copy the relavent API keys 
+back into the updated WeatherFlow_PyConsole.ini file.
+
+```
+cd ~/WeatherFlow/
+wget https://api.github.com/repos/peted-davis/WeatherFlow_PyConsole/tarball -O PyConsole.tar.gz
+tar -xvf PyConsole.tar.gz --strip 1
+rm PyConsole.tar.gz
+```
 
 ## Installation Instructions
 
@@ -101,7 +115,7 @@ sudo reboot now
 
 ```
 cd && mkdir WeatherFlow && cd WeatherFlow
-wget https://github.com/peted-davis/WeatherFlow_PyConsole/archive/v0.2-beta.tar.gz -O PyConsole.tar.gz
+wget https://api.github.com/repos/peted-davis/WeatherFlow_PyConsole/tarball -O PyConsole.tar.gz
 tar -xvf PyConsole.tar.gz --strip 1
 rm PyConsole.tar.gz
 ```
@@ -110,8 +124,9 @@ rm PyConsole.tar.gz
 
 To get the WeatherFlow PyConsole up and running, you need to specify your 
 station number in the configuration file, as well as one API key needed to
-determine the the station location (country) from its latitude/longitude, and 
-one needed to download an apppropriate weather forecast.
+determine the the station location (country) from its latitude/longitude, one 
+needed to download an apppropriate weather forecast, and one needed to download 
+the closest METAR information to your station location.
 
 First, open the PyConsole .ini file:
 
@@ -134,15 +149,22 @@ If you live outside the UK, leave the 'MetOfficeKey' variable blank and register
 instead for a DarkSky API account (https://darksky.net/dev/register). Copy your
 API key into the 'DarkSkyKey' variable.
 
-You should now have a username in the 'GeoNamesKey' variable, and an API key in
+Finally go to CheckWX Aviation Weather and register for a free API key that will
+enable access to the closest METAR information to you station location.
+(https://www.checkwx.com/signup). Copy your API key into the 'CheckWXKey' 
+variable.  
+
+You should now have a username in the 'GeoNamesKey' variable, an API key in
 either the 'MetOfficeKey' variable if you live in the UK, or in the 'DarkSkyKey' 
-variable if you live elsewhere. Next type your station ID into the 'StationID'
-variable. 
+variable if you live elsewhere, and an API key in the 'CheckWXKey' variable.
+Next type your station ID into the 'StationID' variable. 
 
 The console is designed to display data from the first Air and Sky module
 it finds associated with your station. If you have multiple modules, write the 
 names of the modules you wish to display in the 'AirName' and 'SkyName' 
 variables. 
+
+Leave the 'WFlowKey' as-is.
 
 Save your changes in nano:
 
