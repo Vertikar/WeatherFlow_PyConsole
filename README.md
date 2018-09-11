@@ -26,10 +26,11 @@ rm PyConsole.tar.gz
 Follow these instructions to setup a new installation of the WeatherFlow PyConsole on your
 Raspberry Pi Official 7 inch touch screen. This initial installation should take ~1 hour.
 
-The instructions assume you have already sucesfully setup your Raspberry Pi, 
-have attached the touch screen, and have either a keyboard and mouse attached 
-directly to the Pi, or you can access the Pi through SSH/VNC. If you are 
-starting from scratch, some of these links may help get you started:
+The instructions assume you have already sucesfully setup your Raspberry Pi and 
+installed Raspbian Stretch with Desktop, have attached the touch screen, and have 
+either a keyboard and mouse attached directly to the Pi, or you can access the Pi 
+through SSH/VNC. If you are starting from scratch, some of these links may help get 
+you started:
 
 * https://www.raspberrypi.org/downloads/raspbian/
 * https://www.raspberrypi.org/documentation/configuration/security.md
